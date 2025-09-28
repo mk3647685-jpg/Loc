@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #locations { margin-top: 20px; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Location Tracker</h1>
+    <button id="shareLocation">Share My Location</button>
+    <div id="status"></div>
+    <h2>All Locations</h2>
+    <ul id="locations"></ul>
+
+    <script>
+        const backendUrl = 'http://localhost:3000'; // Change if your server is hosted elsewhere
+
+        // Function to get current location and upload
+        document.getElementById('shareLocation').addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const long = position.coords.longitude;
+                    document.getElementById('status').textContent = 'Uploading location...';
+
+                    try {
+                        const response = await fetch(`${backendUrl}/upload-location`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ lat, long })
+                        });
+                        const data = await response.json();
+                        document.getElementById('status').textContent = `Location uploaded with ID: ${data.id}`;
+                        loadLocations(); // Refresh the list
+                    } catch (error) {
+                        document.getElementById('status').textContent = 'Error uploading location.';
+                        console.error(error);
+                    }
+                }, (error) => {
+                    document.getElementById('status').textContent = 'Error getting location: ' + error.message;
+                });
+            } else {
+                document.getElementById('status').textContent = 'Geolocation is not supported by this browser.';
+            }
+        });
+
+        // Function to load all locations
+        async function loadLocations() {
+            try {
+                const response = await fetch(`${backendUrl}/locations`);
+                const locations = await response.json();
+                const ul = document.getElementById('locations');
+                ul.innerHTML = '';
+                locations.forEach(loc => {
+                    const li = document.createElement('li');
+                    li.textContent = `ID: ${loc.id} - Lat: ${loc.lat}, Long: ${loc.long} `;
+                    const link = document.createElement('a');
+                    link.href = `https://www.google.com/maps?q=${loc.lat},${loc.long}`;
+                    link.textContent = 'View on Google Maps';
+                    link.target = '_blank';
+                    li.appendChild(link);
+                    ul.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error loading locations:', error);
+            }
+        }
+
+        // Load locations on page load
+        loadLocations();
+    </script>
+</body>
+</html>
